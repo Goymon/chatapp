@@ -1,13 +1,21 @@
 const Joi = require('joi');
 const mongoose = require('mongoose');
 const { UserInputError } = require('apollo-server-express');
-const { SignUp } = require('../schemas');
+const { signUp, signIn } = require('../schemas');
 const { User } = require('../models');
+const Auth = require('../auth');
 
 module.exports = {
     Query: {
-        users: async (root, args, context, info) => {
+        me: (root, args, { req }, info) => {
+            Auth.checkSignedIn(req);
+
+            return User.findById(req.session.userId);
+        },
+        users: async (root, args, { req }, info) => {
             // TODO: auth, projection 
+
+            Auth.checkSignedIn(req);
 
             return await User.find({});
         },
@@ -22,11 +30,33 @@ module.exports = {
         }
     },
     Mutation: {
-        signUp: async (root, args, context, info) => {
+        signUp: async (root, args, { req }, info) => {
             // TODO: not auth
-            // TODO: validation
-            await Joi.validate(args, SignUp, { abortEarly: false });
+            
+            Auth.checkSignedOut(req);
+
+            await Joi.validate(args, signUp, { abortEarly: false });
             return User.create(args);
+        },
+        signIn: async (root, args, { req }, info) => {
+            const { userId } = req.session;
+
+            if(userId) {
+                return User.findById(userId);
+            }
+
+            await Joi.validate(args, signIn, { abortEarly: false });
+            
+            const user = await Auth.attempSignIn(args.email, args.password);
+
+            req.session.userId = user.id;
+
+            return user;
+        },
+        signOut: (root, args, { req, res }, info) => {
+            Auth.checkSignedIn(req);
+
+            return Auth.signOut(req, res);
         }
     }
 }

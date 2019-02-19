@@ -1,1 +1,1 @@
-module.exports.SignUp = require('./user');
+module.exports = require('./user');

@@ -1,8 +1,22 @@
 const { ApolloServer } = require('apollo-server-express');
 const typeDefs = require('./src/typeDefs');
 const resolvers = require('./src/resolvers');
-const { APP_PORT, IN_PROD, DB_USERNAME, DB_PASSWORD } = require('./src/config');
+const session = require('express-session');
+const connectRedis = require('connect-redis');
+
 const mongoose = require('mongoose');
+
+const { 
+    APP_PORT, 
+    IN_PROD,
+    DB_USERNAME,
+    DB_PASSWORD,
+    SESS_NAME,
+    SESS_SECRET,
+    SESS_LIFETIME,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_PASSWORD } = require('./src/config');
 
 
 const express = require('express');
@@ -11,10 +25,32 @@ const app = express();
 
 app.disable('x-powered-by');
 
+const RedisStore = connectRedis(session);
+
+const store = new RedisStore({
+    host: REDIS_HOST,
+    port: REDIS_PORT,
+    pass: REDIS_PASSWORD
+})
+
+app.use(session({
+    store,
+    name: SESS_NAME,
+    secret: SESS_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: SESS_LIFETIME,
+        sameSite: true,
+        secure: IN_PROD
+    }
+}));
+
 const server = new ApolloServer({
     typeDefs,
     resolvers,
-    playground: IN_PROD
+    playground: !IN_PROD,
+    context: ({ req, res }) => { req, res }
 });
 
 server.applyMiddleware({ app });
