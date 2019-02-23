@@ -42,15 +42,20 @@ app.use(session({
     cookie: {
         maxAge: SESS_LIFETIME,
         sameSite: true,
-        secure: IN_PROD
+        secure: false
     }
 }));
 
 const server = new ApolloServer({
     typeDefs,
     resolvers,
-    playground: !IN_PROD,
-    context: ({ req, res }) => { req, res }
+    cors: false,
+    playground: {
+        settings: {
+            'request.credentials': 'include'
+        }
+    },
+    context: ({ req, res }) => ({ req, res })
 });
 
 server.applyMiddleware({ app });
@@ -59,7 +64,7 @@ server.applyMiddleware({ app });
 mongoose.connect(`mongodb://${DB_USERNAME}:${DB_PASSWORD}@ds239703.mlab.com:39703/chat`, { useNewUrlParser: true })
     .then(() => {
         app.listen({ port: APP_PORT }, () =>
-            console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`)
+            console.log(`🚀  Server ready at http://localhost:4000${server.graphqlPath} 🚀`)
         )
     })
     .catch(err => console.log);
